@@ -26,6 +26,11 @@
             }
         }
     </script>
+    <style>
+        /* Pro plynulé animace modálního okna */
+        .modal-active { display: flex !important; }
+        .modal-show { opacity: 1 !important; transform: scale(1) !important; }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased font-sans">
 
@@ -48,7 +53,7 @@
                         Získejte hned svůj e-book! Zadejte své údaje a já vám pošlu <strong class="text-gray-900">ZDARMA</strong> odkaz na kopii mého návodu, který vám pomůže k plnému diáři zakázek.
                     </p>
 
-                    <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 max-w-lg mx-auto lg:mx-0">
+                    <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 max-w-lg mx-auto lg:mx-0 relative">
                         <form id="ebookForm" class="flex flex-col gap-4">
                             
                             <div class="flex flex-col sm:flex-row gap-4">
@@ -76,7 +81,7 @@
                                     class="w-full px-5 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all bg-gray-50 text-gray-900">
                             </div>
 
-                            <button type="submit" id="submitBtn" 
+                            <button type="button" id="triggerModalBtn" 
                                 class="w-full whitespace-nowrap px-8 py-4 mt-2 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-brand-500/30 text-lg">
                                 Získat E-book ZDARMA
                             </button>
@@ -101,6 +106,45 @@
             </div>
         </div>
     </section>
+
+    <div id="gdprModal" class="fixed inset-0 z-50 hidden bg-gray-900/60 backdrop-blur-sm overflow-y-auto h-full w-full justify-center items-center transition-opacity duration-300 opacity-0">
+        <div id="gdprContent" class="relative bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 transform scale-95 transition-transform duration-300">
+            <div class="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center text-xl mb-4 mx-auto">🔒</div>
+            <h3 class="text-2xl font-heading font-bold text-gray-900 mb-2 text-center">Ještě jeden krok...</h3>
+            <p class="text-gray-600 mb-6 text-center text-sm">Abychom vám mohli e-book zaslat a občas přidat nějaký tip z praxe, potřebujeme váš souhlas.</p>
+
+            <div class="space-y-4 mb-8">
+                <label class="flex items-start gap-3 cursor-pointer group bg-gray-50 p-3 rounded-lg border border-gray-100 hover:border-brand-200 transition-colors">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <input type="checkbox" id="consentGdpr" class="w-5 h-5 text-brand-500 rounded border-gray-300 focus:ring-brand-500 cursor-pointer">
+                    </div>
+                    <span class="text-sm text-gray-700">
+                        Souhlasím se <strong>zpracováním osobních údajů</strong> pro účely zaslání e-booku.* <span class="text-red-500">(povinné)</span>
+                    </span>
+                </label>
+                
+                <label class="flex items-start gap-3 cursor-pointer group bg-gray-50 p-3 rounded-lg border border-gray-100 hover:border-brand-200 transition-colors">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <input type="checkbox" id="consentMarketing" class="w-5 h-5 text-brand-500 rounded border-gray-300 focus:ring-brand-500 cursor-pointer">
+                    </div>
+                    <span class="text-sm text-gray-700">
+                        Souhlasím se zasíláním <strong>obchodních sdělení a tipů</strong>, abych nepromeškal žádnou novinku. (Lze kdykoliv zrušit).
+                    </span>
+                </label>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button type="button" id="submitFinalBtn" disabled
+                    class="w-full px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-brand-500">
+                    Potvrdit a odeslat e-book
+                </button>
+                <button type="button" id="cancelModalBtn" 
+                    class="w-full px-6 py-3 text-gray-500 font-medium hover:text-gray-800 transition-colors">
+                    Zpět
+                </button>
+            </div>
+        </div>
+    </div>
 
     <section class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -180,32 +224,82 @@
     </footer>
 
     <script>
-        // SEM VLOŽ URL Z GOOGLE APPS SCRIPTU Z KROKU 1
         const scriptURL = 'https://script.google.com/macros/s/AKfycbwrHMWUNrVATB0MwA4I1kcmpgftoWrb6uG0pWKEVeROoaIURk5HF1ELn1lFfmv2KFfoDw/exec';
         
         const form = document.getElementById('ebookForm');
+        const triggerModalBtn = document.getElementById('triggerModalBtn');
         const successMessage = document.getElementById('successMessage');
-        const submitBtn = document.getElementById('submitBtn');
+        
+        // Modal prvky
+        const modal = document.getElementById('gdprModal');
+        const modalContent = document.getElementById('gdprContent');
+        const cancelBtn = document.getElementById('cancelModalBtn');
+        const submitFinalBtn = document.getElementById('submitFinalBtn');
+        const consentGdpr = document.getElementById('consentGdpr');
+        const consentMarketing = document.getElementById('consentMarketing');
 
-        form.addEventListener('submit', e => {
-            e.preventDefault();
-            
-            // Změna tlačítka během odesílání
-            submitBtn.disabled = true;
-            submitBtn.innerText = 'Odesílám... ⏳';
-            submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        // Funkce pro otevření modalu
+        function openModal() {
+            modal.classList.add('modal-active');
+            // Malé zpoždění pro plynulou animaci
+            setTimeout(() => {
+                modal.classList.add('opacity-100');
+                modalContent.classList.add('modal-show');
+            }, 10);
+        }
 
-            fetch(scriptURL, { method: 'POST', body: new FormData(form)})
+        // Funkce pro zavření modalu
+        function closeModal() {
+            modal.classList.remove('opacity-100');
+            modalContent.classList.remove('modal-show');
+            setTimeout(() => {
+                modal.classList.remove('modal-active');
+            }, 300);
+        }
+
+        // 1. Kliknutí na hlavní tlačítko "Získat zdarma"
+        triggerModalBtn.addEventListener('click', () => {
+            // Zkontroluje, zda jsou vyplněná povinná pole
+            if (form.checkValidity()) {
+                openModal();
+            } else {
+                // Pokud nejsou, zobrazí výchozí chybové hlášky prohlížeče
+                form.reportValidity();
+            }
+        });
+
+        // 2. Tlačítko zpět v modalu
+        cancelBtn.addEventListener('click', closeModal);
+
+        // 3. Kontrola, zda je zaškrtnutý povinný GDPR souhlas
+        consentGdpr.addEventListener('change', (e) => {
+            submitFinalBtn.disabled = !e.target.checked;
+        });
+
+        // 4. Finální odeslání z modalu
+        submitFinalBtn.addEventListener('click', () => {
+            // Skryjeme modal a ukážeme načítání na hlavním tlačítku
+            closeModal();
+            triggerModalBtn.disabled = true;
+            triggerModalBtn.innerText = 'Odesílám... ⏳';
+            triggerModalBtn.classList.add('opacity-75', 'cursor-not-allowed');
+
+            // Přidáme data o souhlasu do formuláře, ať to máš v tabulce uložené
+            const formData = new FormData(form);
+            formData.append('gdpr_consent', consentGdpr.checked ? 'Ano' : 'Ne');
+            formData.append('marketing_consent', consentMarketing.checked ? 'Ano' : 'Ne');
+
+            fetch(scriptURL, { method: 'POST', body: formData })
                 .then(response => {
-                    // Skryje formulář a ukáže děkovnou zprávu
                     form.classList.add('hidden');
+                    triggerModalBtn.classList.add('hidden'); // Skryje i samotné tlačítko
                     successMessage.classList.remove('hidden');
                 })
                 .catch(error => {
                     console.error('Chyba!', error.message);
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = 'Zkusit znovu';
-                    submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    triggerModalBtn.disabled = false;
+                    triggerModalBtn.innerText = 'Zkusit znovu';
+                    triggerModalBtn.classList.remove('opacity-75', 'cursor-not-allowed');
                     alert("Jejda, něco se pokazilo. Zkontrolujte prosím připojení a zkuste to znovu.");
                 });
         });
